@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>X and 0 by Chakus</title>
+  <!-- PeerJS for global online code connection -->
+  <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      background: linear-gradient(135deg, #38bdf8 0%, #0284c7 50%, #0369a1 100%);
+    }
+    .container {
+      text-align: center;
+      background: #0f172a;
+      padding: 25px 20px;
+      border-radius: 20px;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+      max-width: 380px;
+      width: 92%;
+      border: 1px solid #1e293b;
+    }
+    h1 {
+      margin: 0;
+      color: #f8fafc;
+      font-size: 1.8rem;
+      letter-spacing: 1px;
+    }
+    .subtitle {
+      font-size: 0.85rem;
+      color: #38bdf8;
+      margin-bottom: 15px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+    }
+    
+    /* MENU SCREEN */
+    #menu-screen {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 15px;
+    }
+    .menu-btn {
+      padding: 12px;
+      font-size: 1rem;
+      background-color: #0284c7;
+      color: #f8fafc;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background-color 0.2s;
+    }
+    .menu-btn:hover {
+      background-color: #0369a1;
+    }
+
+    #multiplayer-setup {
+      display: none;
+      margin-top: 15px;
+      text-align: left;
+      background: #1e293b;
+      padding: 15px;
+      border-radius: 12px;
+      border: 1px solid #334155;
+    }
+    #multiplayer-setup label {
+      color: #94a3b8;
+      font-size: 0.85rem;
+      font-weight: bold;
+      display: block;
+      margin-bottom: 5px;
+    }
+    #multiplayer-setup input {
+      width: 100%;
+      padding: 10px;
+      background: #0f172a;
+      border: 1px solid #475569;
+      color: #f8fafc;
+      border-radius: 8px;
+      font-size: 1rem;
+      margin-bottom: 10px;
+      text-align: center;
+      letter-spacing: 2px;
+    }
+    .room-code-display {
+      background: #0f172a;
+      color: #38bdf8;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 1.2rem;
+      font-weight: bold;
+      text-align: center;
+      margin-bottom: 10px;
+      border: 1px dashed #475569;
+      user-select: all;
+    }
+
+    /* GAME SCREEN */
+    #game-screen {
+      display: none;
+    }
+
+    .scoreboard {
+      display: flex;
+      justify-content: space-around;
+      background: #1e293b;
+      padding: 10px;
+      border-radius: 12px;
+      margin-bottom: 15px;
+      border: 1px solid #334155;
+    }
+    .score-box {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #94a3b8;
+    }
+    .score-box span {
+      display: block;
+      font-size: 1.3rem;
+      margin-top: 2px;
+      font-weight: bold;
+    }
+    .score-x span { color: #f87171; }
+    .score-o span { color: #4ade80; }
+    .score-tie span { color: #facc15; }
+
+    .status {
+      font-size: 1.05rem;
+      margin-bottom: 15px;
+      font-weight: bold;
+      color: #e2e8f0;
+      min-height: 28px;
+    }
+
+    .board-wrapper {
+      position: relative;
+      display: inline-block;
+      width: 100%;
+    }
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      background-color: #1e293b;
+      padding: 10px;
+      border-radius: 14px;
+      aspect-ratio: 1 / 1;
+      border: 1px solid #334155;
+    }
+    .cell {
+      background-color: #334155;
+      border-radius: 10px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 2.8rem;
+      font-weight: 900;
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.2s ease;
+    }
+    .cell:hover {
+      background-color: #475569;
+    }
+    .cell.taken {
+      cursor: not-allowed;
+    }
+    
+    .cell.x {
+      color: #ef4444;
+      text-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+    }
+    .cell.o {
+      color: #22c55e;
+      text-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
+    }
+    
+    #winning-line {
+      position: absolute;
+      background-color: #f59e0b;
+      height: 6px;
+      border-radius: 3px;
+      transform-origin: center left;
+      pointer-events: none;
+      display: none;
+      box-shadow: 0 0 12px rgba(245, 158, 11, 0.8);
+      z-index: 10;
+    }
+
+    .btn-container {
+      margin-top: 18px;
+      display: flex;
+      gap: 10px;
+    }
+    button {
+      flex: 1;
+      padding: 10px 12px;
+      font-size: 0.9rem;
+      background-color: #0284c7;
+      color: #f8fafc;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background-color 0.2s;
+    }
+    button:hover {
+      background-color: #0369a1;
+    }
+    button.secondary {
+      background-color: #334155;
+      color: #94a3b8;
+    }
+    button.secondary:hover {
+      background-color: #475569;
+      color: #f8fafc;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>X and 0</h1>
+    <div class="subtitle">by Chakus</div>
+    
+    <!-- MENU SCREEN -->
+    <div id="menu-screen">
+      <button class="menu-btn" onclick="startLocalPlay()">Play Locally (Same Device)</button>
+      <button class="menu-btn" onclick="showMultiplayerSetup()">Play Online via Code (Anywhere)</button>
+    </div>
+
+    <!-- MULTIPLAYER SETUP SCREEN -->
+    <div id="multiplayer-setup">
+      <div id="host-section">
+        <label>Your Room Code:</label>
+        <div class="room-code-display" id="my-peer-id">Generating...</div>
+        <button class="menu-btn" onclick="copyCode()" style="margin-bottom:10px; width:100%;">Copy Room Code</button>
+      </div>
+      
+      <div id="join-section" style="margin-top: 10px;">
+        <label for="peer-id-input">Enter Partner's Room Code:</label>
+        <input type="text" id="peer-id-input" placeholder="Paste code here..." />
+        <button class="menu-btn" onclick="connectToPeer()" style="width:100%;">Connect & Play</button>
+      </div>
+      <button class="secondary menu-btn" onclick="backToMenu()" style="width:100%; margin-top:10px;">Back</button>
+    </div>
+
+    <!-- GAME SCREEN -->
+    <div id="game-screen">
+      <div class="scoreboard">
+        <div class="score-box score-x">Player X <span id="scoreX">0</span></div>
+        <div class="score-box score-tie">Ties <span id="scoreTie">0</span></div>
+        <div class="score-box score-o">Player 0 <span id="scoreO">0</span></div>
+      </div>
+
+      <div id="status" class="status">Connecting...</div>
+      
+      <div class="board-wrapper">
+        <div class="board" id="board">
+          <div class="cell" data-index="0"></div>
+          <div class="cell" data-index="1"></div>
+          <div class="cell" data-index="2"></div>
+          <div class="cell" data-index="3"></div>
+          <div class="cell" data-index="4"></div>
+          <div class="cell" data-index="5"></div>
+          <div class="cell" data-index="6"></div>
+          <div class="cell" data-index="7"></div>
+          <div class="cell" data-index="8"></div>
+        </div>
+        <div id="winning-line"></div>
+      </div>
+
+      <div class="btn-container">
+        <button id="restartBtn">Reset Board</button>
+        <button onclick="backToMenu()" class="secondary">Main Menu</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const cells = document.querySelectorAll('.cell');
+    const statusText = document.querySelector('#status');
+    const restartBtn = document.querySelector('#restartBtn');
+    const winningLine = document.querySelector('#winning-line');
+    const boardEl = document.querySelector('#board');
+
+    const scoreXEl = document.querySelector('#scoreX');
+    const scoreOEl = document.querySelector('#scoreO');
+    const scoreTieEl = document.querySelector('#scoreTie');
+
+    const menuScreen = document.querySelector('#menu-screen');
+    const multiplayerSetup = document.querySelector('#multiplayer-setup');
+    const gameScreen = document.querySelector('#game-screen');
+    const myPeerIdDisplay = document.querySelector('#my-peer-id');
+    const peerIdInput = document.querySelector('#peer-id-input');
+
+    const winPatterns = [
+      [0, 1, 2], [3, 4, 5], [6, 7, 8],
+      [0, 3, 6], [1, 4, 7], [2, 5, 8],
+      [0, 4, 8], [2, 4, 6]
+    ];
+
+    let options = ["", "", "", "", "", "", "", "", ""];
+    let moveHistory = []; // Track player moves order
+    let currentPlayer = "X";
+    let running = true;
+    let scores = { X: 0, 0: 0, ties: 0 };
+
+    let isMultiplayer = false;
+    let peer = null;
+    let conn = null;
+    let myAssignedSymbol = "X";
+
+    // Sound Synthesizer
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function playSound(type) {
+      if (!audioCtx) return;
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const osc = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      osc.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+
+      if (type === 'click') {
+        osc.frequency.setValueAtTime(450, audioCtx.currentTime);
+        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.08);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.08);
+      } else if (type === 'win') {
+        osc.frequency.setValueAtTime(523.25, audioCtx.currentTime);
+        osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.1);
+        osc.frequency.setValueAtTime(783.99, audioCtx.currentTime + 0.2);
+        gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.45);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.45);
+      } else if (type === 'draw') {
+        osc.frequency.setValueAtTime(250, audioCtx.currentTime);
+        osc.frequency.setValueAtTime(180, audioCtx.currentTime + 0.15);
+        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.3);
+      }
+    }
+
+    function startLocalPlay() {
+      isMultiplayer = false;
+      menuScreen.style.display = 'none';
+      gameScreen.style.display = 'block';
+      resetGame(true);
+    }
+
+    function showMultiplayerSetup() {
+      menuScreen.style.display = 'none';
+      multiplayerSetup.style.display = 'block';
+
+      if (!peer) {
+        const randomId = 'chakus-' + Math.floor(1000 + Math.random() * 9000);
+        peer = new Peer(randomId);
+
+        peer.on('open', (id) => {
+          myPeerIdDisplay.textContent = id;
+        });
+
+        peer.on('connection', (connection) => {
+          conn = connection;
+          isMultiplayer = true;
+          myAssignedSymbol = "X";
+          setupConnectionListeners();
+          multiplayerSetup.style.display = 'none';
+          gameScreen.style.display = 'block';
+          resetGame(true);
+        });
+      }
+    }
+
+    function connectToPeer() {
+      const code = peerIdInput.value.trim();
+      if (!code) {
+        alert('Please enter a valid room code.');
+        return;
+      }
+
+      conn = peer.connect(code);
+      isMultiplayer = true;
+      myAssignedSymbol = "0";
+
+      conn.on('open', () => {
+        setupConnectionListeners();
+        multiplayerSetup.style.display = 'none';
+        gameScreen.style.display = 'block';
+        resetGame(true);
+      });
+    }
+
+    function setupConnectionListeners() {
+      conn.on('data', (data) => {
+        if (data.type === 'move') {
+          handleRemoteMove(data.index);
+        } else if (data.type === 'reset') {
+          resetGame(false, data.nextPlayer);
+        }
+      });
+    }
+
+    function copyCode() {
+      navigator.clipboard.writeText(myPeerIdDisplay.textContent);
+      alert('Room code copied to clipboard!');
+    }
+
+    function backToMenu() {
+      if (conn) conn.close();
+      if (peer) peer.destroy();
+      peer = null;
+      conn = null;
+      gameScreen.style.display = 'none';
+      multiplayerSetup.style.display = 'none';
+      menuScreen.style.display = 'flex';
+    }
+
+    cells.forEach(cell => cell.addEventListener('click', cellClicked));
+    restartBtn.addEventListener('click', () => {
+      resetGame(true);
+      if (isMultiplayer && conn) {
+        conn.send({ type: 'reset', nextPlayer: currentPlayer });
+      }
+    });
+
+    function cellClicked() {
+      const cellIndex = this.getAttribute('data-index');
+
+      if (options[cellIndex] !== "" || !running) return;
+      if (isMultiplayer && currentPlayer !== myAssignedSymbol) return;
+
+      playSound('click');
+      executeMove(cellIndex, currentPlayer);
+
+      if (isMultiplayer && conn) {
+        conn.send({ type: 'move', index: cellIndex });
+      }
+    }
+
+    function handleRemoteMove(index) {
+      playSound('click');
+      executeMove(index, currentPlayer);
+    }
+
+    function executeMove(index, playerSymbol) {
+      options[index] = playerSymbol;
+      moveHistory.push(playerSymbol); // Record player who made move
+      const cell = cells[index];
+      cell.textContent = playerSymbol;
+      cell.classList.add('taken');
+      cell.classList.add(playerSymbol === 'X' ? 'x' : 'o');
+      checkWinner();
+    }
+
+    function changePlayer() {
+      currentPlayer = (currentPlayer === "X") ? "0" : "X";
+      updateStatusText();
+    }
+
+    function updateStatusText() {
+      if (isMultiplayer) {
+        if (currentPlayer === myAssignedSymbol) {
+          statusText.textContent = `Your Turn (${currentPlayer})`;
+        } else {
+          statusText.textContent = `Partner's Turn (${currentPlayer})`;
+        }
+      } else {
+        statusText.textContent = `Player ${currentPlayer}'s Turn`;
+      }
+    }
+
+    function checkWinner() {
+      let winningCombo = null;
+
+      for (let i = 0; i < winPatterns.length; i++) {
+        const combo = winPatterns[i];
+        const cellA = options[combo[0]];
+        const cellB = options[combo[1]];
+        const cellC = options[combo[2]];
+
+        if (cellA !== "" && cellA === cellB && cellB === cellC) {
+          winningCombo = combo;
+          break;
+        }
+      }
+
+      if (winningCombo) {
+        statusText.textContent = `Player ${currentPlayer} Wins! 🎉`;
+        running = false;
+        playSound('win');
+        drawWinningLine(winningCombo);
+        
+        scores[currentPlayer]++;
+        updateScoreboard();
+
+        // The LOSER starts next round
+        const nextStartPlayer = (currentPlayer === "X") ? "0" : "X";
+
+        setTimeout(() => {
+          resetGame(false, nextStartPlayer);
+        }, 2000);
+
+      } else if (!options.includes("")) {
+        statusText.textContent = `It's a Draw! 🤝`;
+        running = false;
+        playSound('draw');
+        scores.ties++;
+        updateScoreboard();
+
+        // On DRAW: The player who made the 2nd to last move (8th move) starts next
+        const nextStartPlayer = moveHistory[moveHistory.length - 2];
+
+        setTimeout(() => {
+          resetGame(false, nextStartPlayer);
+        }, 2000);
+
+      } else {
+        changePlayer();
+      }
+    }
+
+    function drawWinningLine(combo) {
+      const cellA = cells[combo[0]].getBoundingClientRect();
+      const cellC = cells[combo[2]].getBoundingClientRect();
+      const wrapperRect = boardEl.parentElement.getBoundingClientRect();
+
+      const x1 = (cellA.left + cellA.width / 2) - wrapperRect.left;
+      const y1 = (cellA.top + cellA.height / 2) - wrapperRect.top;
+      const x2 = (cellC.left + cellC.width / 2) - wrapperRect.left;
+      const y2 = (cellC.top + cellC.height / 2) - wrapperRect.top;
+
+      const distance = Math.hypot(x2 - x1, y2 - y1);
+      const angle = Math.atan2(y2 - y1, x2 - x1) * (180 / Math.PI);
+
+      winningLine.style.width = `${distance}px`;
+      winningLine.style.left = `${x1}px`;
+      winningLine.style.top = `${y1 - 3}px`;
+      winningLine.style.transform = `rotate(${angle}deg)`;
+      winningLine.style.display = 'block';
+    }
+
+    function resetGame(manualRestart = false, nextPlr = "X") {
+      if (manualRestart) {
+        currentPlayer = "X";
+      } else {
+        currentPlayer = nextPlr;
+      }
+
+      options = ["", "", "", "", "", "", "", "", ""];
+      moveHistory = [];
+      updateStatusText();
+      winningLine.style.display = 'none';
+      cells.forEach(cell => {
+        cell.textContent = "";
+        cell.classList.remove('taken', 'x', 'o');
+      });
+      running = true;
+    }
+
+    function updateScoreboard() {
+      scoreXEl.textContent = scores.X;
+      scoreOEl.textContent = scores['0'];
+      scoreTieEl.textContent = scores.ties;
+    }
+
+    window.addEventListener('resize', () => {
+      if (!running && winningLine.style.display === 'block') {
+        const lastWinnerCombo = winPatterns.find(combo => {
+          return options[combo[0]] !== "" && 
+                 options[combo[0]] === options[combo[1]] && 
+                 options[combo[1]] === options[combo[2]];
+        });
+        if (lastWinnerCombo) drawWinningLine(lastWinnerCombo);
+      }
+    });
+  </script>
+</body>
+</html>
